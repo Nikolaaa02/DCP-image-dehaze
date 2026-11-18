@@ -45,6 +45,7 @@ struct ImageQualityAggregateStats {
     // Nazivi slika koje imaju najgori MAE i PSNR.
     string maxMAEImage;
     string minPSNRImage;
+    string maxDifferenceImage;
 };
 
 static uint64_t roundDivideUnsigned(uint64_t numerator,
@@ -138,7 +139,7 @@ static bool simulateTransmissionFixed(
                     uint64_t ratioRaw[3];
 
                     for (int c = 0; c < 3; ++c) {
-                        // pixel[c] / A[c], zaokruzeno u Q2.F.
+                        // pixel[c] / A[c], zaokruzeno u Q7.F.
                         // Araw[c] = A[c] * scale.
                         const uint64_t numerator =
                             static_cast<uint64_t>(pixel[c]) *
@@ -235,7 +236,7 @@ static cv::Mat makeDehazedImage(
     cv::Mat recovered(
         image.rows, image.cols, CV_64FC3);
 
-    // 1. Guided filter: preciscavanje transmisije.
+    // 1. Guided filter.
     guided_filter(
         &image,
         &transmission,
@@ -407,8 +408,7 @@ static bool isSelectedImage(
     if (image == selected)
         return true;
 
-    // Omogucava da se prosledi samo naziv slike
-    // ili relativni deo putanje.
+    // Omogucava da se prosledi samo naziv slike ili relativni deo putanje.
     if (image.size() <= selected.size())
         return false;
 
@@ -466,7 +466,7 @@ int main(int argc, char** argv)
         cerr << "Upotreba: HazeRemoval_BitAnalysis.exe "
             << "\"putanja_do_foldera\" "
             << "[--image \"putanja_do_slike\"] "
-            << "[--frac-bits 7,8,9,10,11]\n";
+            << "[--frac-bits 6,8,10,12]\n";
 
         return 1;
     }
@@ -479,7 +479,7 @@ int main(int argc, char** argv)
     string visualizeImage = "SGP_Google_345.png";
 
     // Podrazumevani kandidati za broj razlomljenih bitova.
-    vector<int> fracBitsCandidates = { 7, 8, 9, 10, 11 };
+    vector<int> fracBitsCandidates = { 6, 8, 10, 12 };
 
     // Obrada opcionalnih argumenata.
     for (int arg = 2; arg < argc; ++arg) {
@@ -570,6 +570,22 @@ int main(int argc, char** argv)
     else {
         cerr << "Upozorenje: ne mogu da otvorim "
             << "fixed_point_image_quality.csv za upis.\n";
+    }
+
+    // CSV sa zbirnim rezultatima kvaliteta za svaku vrednost F.
+    ofstream summaryCsv("fixed_point_image_quality_summary.csv");
+    if (summaryCsv.is_open()) {
+        summaryCsv
+            << "F,images_compared,MAE,MSE,PSNR_dB,"
+            << "max_single_image_MAE,max_MAE_image,"
+            << "min_single_image_PSNR_dB,min_PSNR_image,"
+            << "max_pixel_difference,max_difference_image\n";
+
+        summaryCsv << setprecision(15);
+    }
+    else {
+        cerr << "Upozorenje: ne mogu da otvorim "
+            << "fixed_point_image_quality_summary.csv za upis.\n";
     }
 
     // Parametri istog guided filtera i rekonstrukcije kao u originalnom Process() postupku.
@@ -736,6 +752,10 @@ int main(int argc, char** argv)
             double imagePSNR;
             int maxDifference;
 
+            ImageQualityAggregateStats& qualityStats = finalImageStats[F];
+
+            const int previousMaxDifference = qualityStats.maxDifference;
+
             compareImages(
                 referenceDehazed,
                 fixedDehazed,
@@ -744,8 +764,10 @@ int main(int argc, char** argv)
                 maxDifference,
                 &finalImageStats[F]);
 
-            // Azuriranje najgorih rezultata medju pojedinacnim slikama.
-            ImageQualityAggregateStats& qualityStats = finalImageStats[F];
+            // Slika na kojoj je zabelezena maksimalna razlika piksela.
+            if (maxDifference > previousMaxDifference) {
+                qualityStats.maxDifferenceImage = filename;
+            }
 
             // Najveci MAE pojedinacne slike.
             if (qualityStats.maxMAEImage.empty() ||
@@ -893,15 +915,40 @@ int main(int argc, char** argv)
             ? std::numeric_limits<double>::infinity()
             : 10.0 * std::log10((255.0 * 255.0) / datasetMSE);
 
+        // Upis zbirnih rezultata u CSV.
+        if (summaryCsv.is_open()) {
+
+            summaryCsv << F << ','
+                << s.images << ','
+                << datasetMAE << ','
+                << datasetMSE << ','
+                << datasetPSNR << ','
+                << s.maxImageMAE << ",\""
+                << s.maxMAEImage << "\","
+                << s.minImagePSNR << ",\""
+                << s.minPSNRImage << "\","
+                << s.maxDifference << ",\""
+                << s.maxDifferenceImage << "\"\n";
+        }
+
         std::cout << "\nF = " << F << '\n';
         std::cout << "Uspesno uporedjenih slika: " << s.images << '\n';
         std::cout << "MAE (sve slike, svi RGB kanali): " << datasetMAE << '\n';
+        std::cout << "MSE (sve slike, svi RGB kanali): " << datasetMSE << '\n';
         std::cout << "PSNR (iz ukupnog MSE): " << datasetPSNR << " dB\n";
         std::cout << "Najveci MAE pojedinacne slike: " << s.maxImageMAE << '\n';
         std::cout << "Slika sa najvecim MAE: " << s.maxMAEImage << '\n';
         std::cout << "Najmanji PSNR pojedinacne slike: " << s.minImagePSNR << " dB\n";
         std::cout << "Slika sa najmanjim PSNR: " << s.minPSNRImage << '\n';
         std::cout << "Maksimalna razlika piksela preko skupa: " << s.maxDifference << '\n';
+        std::cout << "Slika sa maksimalnom razlikom piksela: " << s.maxDifferenceImage << '\n';
+    }
+
+    if (summaryCsv.is_open()) {
+        summaryCsv.close();
+
+        cout << "\nZbirni rezultati kvaliteta sacuvani u "
+            << "fixed_point_image_quality_summary.csv\n";
     }
 
     return 0;
