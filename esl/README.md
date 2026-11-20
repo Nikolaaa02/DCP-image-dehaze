@@ -33,8 +33,7 @@ cmake --build build --config Release
 ```
 ./build/HazeRemoval data/train.bmp
 ```
-Programu se kao argument komandne linije prosleđuje putanja do ulazne slike. U ovom primeru se koristi slika train.bmp, koja se nalazi u direktorijumu data. 
-Nakon izvršavanja programa, rekonstruisana slika se prikazuje u prozoru, a takođe se čuva u radnom direktorijumu projekta. 
+Programu se kao argument komandne linije prosleđuje putanja do ulazne slike. U ovom primeru se koristi slika train.bmp, koja se nalazi u direktorijumu data. Nakon izvršavanja programa, rekonstruisana slika se prikazuje u prozoru, a takođe se čuva u radnom direktorijumu projekta. 
 
 ## 3. Profilisanje izvršne specifikacije
 
