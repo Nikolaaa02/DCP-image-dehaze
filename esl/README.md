@@ -52,6 +52,7 @@ cmake --build build-profile -j$(nproc)
 valgrind --tool=callgrind --callgrind-out-file=callgrind.out ./build-profile/HazeRemoval data/train.bmp
 ```
 Nakon završetka izvršavanja programa, rezultati profilisanja biće sačuvani u fajlu callgrind.out.  
+    
 4. Vizuelni prikaz rezultata:
 ```
 kcachegrind callgrind.out
