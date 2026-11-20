@@ -33,7 +33,8 @@ cmake --build build --config Release
 ```
 ./build/HazeRemoval data/train.bmp
 ```
-Programu se kao argument komandne linije prosleđuje putanja do ulazne slike. U ovom primeru se koristi slika train.bmp, koja se nalazi u direktorijumu data. Nakon izvršavanja programa, rekonstruisana slika se prikazuje u prozoru, a takođe se čuva u radnom direktorijumu projekta. 
+Programu se kao argument komandne linije prosleđuje putanja do ulazne slike. U ovom primeru se koristi slika train.bmp, koja se nalazi u direktorijumu data.  
+Nakon izvršavanja programa, rekonstruisana slika se prikazuje u prozoru, a takođe se čuva u radnom direktorijumu projekta. 
 
 ## 3. Profilisanje izvršne specifikacije
 
@@ -50,7 +51,7 @@ cmake --build build-profile -j$(nproc)
 ```
 valgrind --tool=callgrind --callgrind-out-file=callgrind.out ./build-profile/HazeRemoval data/train.bmp
 ```
-Nakon završetka izvršavanja programa, rezultati profilisanja biće sačuvani u fajlu callgrind.out.
+Nakon završetka izvršavanja programa, rezultati profilisanja biće sačuvani u fajlu callgrind.out.  
 4. Vizuelni prikaz rezultata:
 ```
 kcachegrind callgrind.out
